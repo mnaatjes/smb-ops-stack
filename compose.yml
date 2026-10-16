@@ -1,0 +1,54 @@
+---
+# ==============================================================================
+# Docker Compose Stack Specification: smb-ops
+# Adheres to Homelab Systems Lifecycle (HSL) Container Deployment Standards
+# ==============================================================================
+
+
+services:
+  # Frontend SPA & Reverse Proxy Router
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/mnaatjes/smb-ops-ui:latest}
+    container_name: smb-ops-frontend
+    restart: unless-stopped
+    ports:
+      - "${SERVICE_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - smb_ops_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Backend Application Service (Polyrepo pre-compiled image)
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/mnaatjes/smb-ops-api:latest}
+    container_name: smb-ops-backend
+    restart: unless-stopped
+    environment:
+      - APP_ENV=${APP_ENV:-dev}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - PORT=8000
+    volumes:
+      # Dynamic persistent runtime state mount (Mirrored under /opt/homelab/prod/data/smb-ops/)
+      - "${DATA_DIR:-./data}:/app/data"
+    networks:
+      - smb_ops_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  smb_ops_net:
+    driver: bridge
+
