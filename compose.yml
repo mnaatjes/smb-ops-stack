@@ -51,4 +51,3 @@ services:
 networks:
   smb_ops_net:
     driver: bridge
-
