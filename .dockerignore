@@ -18,6 +18,7 @@ logs/
 README.md
 docs/
 architecture/
+scripts/
 
 # Editor and OS artifacts
 .vscode/
